@@ -9,7 +9,7 @@ library(patchwork)
 library(rlang)
 library(xtable)
 
-setwd("/Users/lukas/Documents/Unizeug/Bachelorarbeit")
+setwd("/Users/lukas/Documents/Unizeug/Bachelor_Git")
 
 # Load functions
 source("Code/functions.R")

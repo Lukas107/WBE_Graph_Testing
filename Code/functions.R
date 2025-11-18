@@ -4,7 +4,7 @@ library(dplyr)
 library(DiagrammeR)
 library(DiagrammeRsvg)
 library(rsvg)
-library(ggplot2)a
+library(ggplot2)
 library(patchwork)
 library(rlang)
 library(xtable)
@@ -225,7 +225,7 @@ nary_split <- function(root, number_testers) {
       }, nodes)
     
     # Main part: Try to split into n parts
-    if (length(candidates) > 1) {
+    if (length(candidates) >= 1) {
       
       # Try to give each partition the same probability mass
       target <- 1 / (number_testers+1)
@@ -287,7 +287,7 @@ needed_testing_iterations <- function(root, strategy, number_testers = 1,
     
     if (verbose) {
       cat("Tested nodes:\n")
-      cat(vapply(tested_nodes, function(n) n$name, character(1)), sep = "\n")
+      print(tested_nodes)
     }
     
     test_count <- test_count + 1
@@ -336,14 +336,14 @@ needed_testing_iterations <- function(root, strategy, number_testers = 1,
 
 # Analytically derive distribution for a strat with one sample taker
 cdf_length = 19
-get_strat_pmf = function(strategy,  number_testers=1, verbose=FALSE) {
+get_strat_pmf = function(strategy,  number_testers=1, verbose=TRUE) {
   probs = rep(0, cdf_length)
+  if(verbose) {
+    print("Testers:")
+    print(number_testers)
+    }
   
   for (node_name in col_labels) {
-    if(verbose) {
-      print("Contaminated Node:")
-      print(node_name)
-      }
     root = set_up_tree(contaminated_node=node_name)
     
     node_rpop = FindNode(root, node_name)$rpop
@@ -351,11 +351,7 @@ get_strat_pmf = function(strategy,  number_testers=1, verbose=FALSE) {
     if(node_rpop == 0) next
     
     test_count = needed_testing_iterations(root, strategy,
-        number_testers=number_testers, verbose=FALSE)
-    if (verbose){
-      print("Test count:")
-      print(test_count)
-    }
+        number_testers=number_testers)
     probs[test_count] = probs[test_count] + node_rpop
   }
   return(probs)
@@ -414,7 +410,7 @@ needed_total_tests <- function(root, strategy, number_testers = 1,
 
 
 # Calculate average tests needed by a particular strategy
-average_total_tests <- function(strategy, number_testers = 1, verbose = FALSE) {
+average_total_tests <- function(strategy, number_testers = 1, verbose = TRUE) {
   weighted_sum <- 0
   weight_total <- 0
   
@@ -427,14 +423,8 @@ average_total_tests <- function(strategy, number_testers = 1, verbose = FALSE) {
     # Only consider valid contamination nodes
     if (is.na(node_rpop) || node_rpop == 0) next
     
-    total_tests <- needed_total_tests(
-      root, strategy, number_testers = number_testers, verbose = FALSE
-    )
-    
-    if (verbose) {
-      cat(sprintf("Node: %s | rpop: %.6f | total tests: %d\n",
-                  node_name, node_rpop, total_tests))
-    }
+    total_tests <- needed_total_tests(root, strategy,
+                                      number_testers=number_testers)
     # Add needed tests to result
     weighted_sum  <- weighted_sum + total_tests * node_rpop
   }
