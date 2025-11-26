@@ -271,8 +271,6 @@ nary_split <- function(root, number_testers) {
 
 
 
-
-
 # Code for testing strategies ####
 
 # Calculate needed testing iterations, for a tree with a specified contamination
