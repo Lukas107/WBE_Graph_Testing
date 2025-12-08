@@ -26,18 +26,18 @@ add_children <- function(parent_node, parent_label) {
 }
 
 
-# Compute cum_pop
-compute_cum_pop <- function(root) {
+# Compute cum_rpop
+compute_cum_rpop <- function(root) {
   # compute absolute cumulative mass bottom-up
   root$Do(function(n) {
     n$cum_abs <- n$rpop +
       sum(vapply(n$children, function(ch) ch$cum_abs, numeric(1)))},
     traversal = "post-order")
   
-  # normalize within this subtree so the subtree root has cum_pop = 1
+  # normalize within this subtree so the subtree root has cum_rpop = 1
   total <- root$cum_abs
   if (is.na(total) || total <= 0) stop("Subtree has zero total rpop.")
-  root$Do(function(n) n$cum_pop <- n$cum_abs / total)
+  root$Do(function(n) n$cum_rpop <- n$cum_abs / total)
 }
 
 
@@ -60,7 +60,7 @@ set_up_tree <- function(contaminated_node="KLA_1") {
   })
   
   # Calculate cumulative populations per subtree
-  compute_cum_pop(root)
+  compute_cum_rpop(root)
   
 
   picked_name = contaminated_node
@@ -80,7 +80,7 @@ set_up_tree <- function(contaminated_node="KLA_1") {
 # Strategies ####
 
 # Always choose nodes with highest cumulative population
-max_cum_pop <- function(root, number_testers) {
+max_cum_rpop <- function(root, number_testers) {
   nodes <- Traverse(root)
   
   # The root node is always assumed to be contaminated, no strategy necessary
@@ -95,7 +95,7 @@ max_cum_pop <- function(root, number_testers) {
   candidate_nodes <- nodes[-1]
   
   # 2) Compute scores (cumulative population)
-  cumulative_scores <- vapply(candidate_nodes, function(node) node$cum_pop,
+  cumulative_scores <- vapply(candidate_nodes, function(node) node$cum_rpop,
                               numeric(1))
   
   # 3) Order candidates by descending cumulative population
@@ -111,8 +111,8 @@ max_cum_pop <- function(root, number_testers) {
 }
 
 
-# Choose nodes with highest cum_pop, but always skip a level
-skipping_cum_pop <- function(root, number_testers) {
+# Choose nodes with highest cum_rpop, but always skip a level
+skipping_cum_rpop <- function(root, number_testers) {
   nodes <- Traverse(root)
   
   # The root node is always assumed to be contaminated, no strategy necessary
@@ -121,9 +121,9 @@ skipping_cum_pop <- function(root, number_testers) {
   candidate_nodes <- nodes[-1]
   candidate_names <- vapply(candidate_nodes, function(x) x$name, character(1))
   
-  # Rank by cum_pop
-  cum_pop_scores  <- vapply(candidate_nodes, function(n) n$cum_pop, numeric(1))
-  ranked_indices  <- order(cum_pop_scores, decreasing = TRUE)
+  # Rank by cum_rpop
+  cum_rpop_scores  <- vapply(candidate_nodes, function(n) n$cum_rpop, numeric(1))
+  ranked_indices  <- order(cum_rpop_scores, decreasing = TRUE)
   
   # Required number of nodes that should be returned
   max_to_pick <- min(number_testers, length(candidate_nodes))
@@ -209,7 +209,7 @@ nary_split <- function(root, number_testers) {
   nodes <- Traverse(root)
   
   # Initialize working fields
-  root$Set(nary_cum_pop = root$Get("cum_pop"), excluded = FALSE)
+  root$Set(nary_cum_rpop = root$Get("cum_rpop"), excluded = FALSE)
   
   # Calculate number of tests that can be performed this step
   num_nodes_to_select <- min(number_testers, length(nodes))
@@ -231,17 +231,17 @@ nary_split <- function(root, number_testers) {
       target <- 1 / (number_testers+1)
       
       # Choose non-excluded node closest to target
-      scores <- vapply(candidates, function(node) {-abs(node$nary_cum_pop - target)},
+      scores <- vapply(candidates, function(node) {-abs(node$nary_cum_rpop - target)},
                        numeric(1))
       chosen_node <- candidates[[which.max(scores)]]
       chosen_nodes[[i]] <- chosen_node
       selected_names[i] <- chosen_node$name
       
       # Subtract its mass from all ancestors
-      mass <- chosen_node$nary_cum_pop
+      mass <- chosen_node$nary_cum_rpop
       parent <- chosen_node$parent
       while (!is.null(parent)) {
-        parent$nary_cum_pop <- parent$nary_cum_pop - mass
+        parent$nary_cum_rpop <- parent$nary_cum_rpop - mass
         parent <- parent$parent
       }
       
@@ -283,11 +283,6 @@ needed_testing_iterations <- function(root, strategy, number_testers = 1,
     
     tested_nodes <- strategy(current_node, number_testers = number_testers)
     
-    if (verbose) {
-      cat("Tested nodes:\n")
-      print(tested_nodes)
-    }
-    
     test_count <- test_count + 1
     
     # Nodes that are actually contaminated
@@ -304,8 +299,8 @@ needed_testing_iterations <- function(root, strategy, number_testers = 1,
       # Continue from the deepest contaminated node
       current_node <- deepest_node
       
-      # Renormalise cum_pop within this subtree
-      compute_cum_pop(current_node)
+      # Renormalise cum_rpop within this subtree
+      compute_cum_rpop(current_node)
       
     }
     else {
@@ -319,8 +314,8 @@ needed_testing_iterations <- function(root, strategy, number_testers = 1,
         }
       })
       
-      # Renormalise cum_pop on the remaining tree
-      compute_cum_pop(current_node)
+      # Renormalise cum_rpop on the remaining tree
+      compute_cum_rpop(current_node)
     }
   }
   
@@ -336,15 +331,12 @@ needed_testing_iterations <- function(root, strategy, number_testers = 1,
 cdf_length = 19
 get_strat_pmf = function(strategy,  number_testers=1, verbose=TRUE) {
   probs = rep(0, cdf_length)
-  if(verbose) {
-    print("Testers:")
-    print(number_testers)
-    }
   
   for (node_name in col_labels) {
     root = set_up_tree(contaminated_node=node_name)
     
     node_rpop = FindNode(root, node_name)$rpop
+    
     # Only consider nodes which could actually be contaminated
     if(node_rpop == 0) next
     
@@ -388,7 +380,7 @@ needed_total_tests <- function(root, strategy, number_testers = 1,
       
       # Continue from that node
       current_node <- deepest_node
-      compute_cum_pop(current_node)
+      compute_cum_rpop(current_node)
       
     } else {
       if (verbose) cat("Miss\n")
@@ -398,7 +390,7 @@ needed_total_tests <- function(root, strategy, number_testers = 1,
         parent <- n$parent
         if (!is.null(parent)) parent$RemoveChild(n$name)
       })
-      compute_cum_pop(current_node)
+      compute_cum_rpop(current_node)
     }
   }
   
@@ -442,30 +434,25 @@ mean_tests = function(pmf) {
   return(sum(1:cdf_length * pmf))
 }
 
-print_strat_summaries = function() {
-  # Binary splitting
-  mean_binary = sum(nary_split_pmfs[1] * 1:19)
-  print("Binary strat:")
-  print(sprintf("Min: %d | First Quartile: %d | Median: %d | Mean: %f | Third Quartile: %d | Max: %d",
-                cdf_quantile(0, nary_split_cdfs[1]), cdf_quantile(0.25, nary_split_cdfs[1]),
-                cdf_quantile(0.5, nary_split_cdfs[1]), mean_tests(nary_split_cdfs[[1]]),
-                cdf_quantile(0.75, nary_split_cdfs[1]),
-                cdf_quantile(0.99999, nary_split_cdfs[1])))
+print_strat_summaries = function(number_testers=1){
+  # These arrays will be referenced in the loop
+  strategie_pmfs = c(nary_split_pmfs[number_testers], max_rpop_pmfs[number_testers],
+               skipping_cum_rpop_pmfs[number_testers],
+               max_cum_rpop_pmfs[number_testers])
+  strategie_cdfs = c(nary_split_cdfs[number_testers], max_rpop_cdfs[number_testers],
+                     skipping_cum_rpop_cdfs[number_testers],
+                     max_cum_rpop_cdfs[number_testers])
+  strategy_names = c("nary_split", "max_rpop", "skipping_cum_rpop",
+                     "max_cum_rpop")
   
-  # cum_pop 
-  mean_cum_pop = sum(cum_pop_strat_pmf * 1:19)
-  print("cum_pop strat:")
-  print(sprintf("Min: %d | First Quartile: %d | Median: %d | Mean: %f | Third Quartile: %d | Max: %d",
-                cdf_quantile(0, cum_pop_strat_cdf), cdf_quantile(0.25, cum_pop_strat_cdf),
-                cdf_quantile(0.5, cum_pop_strat_cdf), mean_cum_pop,
-                cdf_quantile(0.75, cum_pop_strat_cdf),
-                cdf_quantile(0.99999, cum_pop_strat_cdf)))
-  
-  mean_rpop = sum(rpop_strat_pmf * 1:19)
-  print("Rpop strat:")
-  print(sprintf("Min: %d | First Quartile: %d | Median: %i | Mean: %f | Third Quartile: %d | Max: %d",
-                cdf_quantile(0, rpop_strat_cdf), cdf_quantile(0.25, rpop_strat_cdf),
-                cdf_quantile(0.5, rpop_strat_cdf), mean_rpop,
-                cdf_quantile(0.75, rpop_strat_cdf),
-                cdf_quantile(0.99999, rpop_strat_cdf)))
+  # Print summary for each strategy
+  for (i in 1:4){
+    strategy_cdf= strategie_cdfs[i]
+    mean = sum(strategie_pmfs[i] * 1:19)
+    print(strategy_name[i])
+    print(sprintf("Min: %d | First Quartile: %d | Median: %d | Mean: %f | Third Quartile: %d | Max: %d",
+        cdf_quantile(0, strategy_cdf), cdf_quantile(0.25, strategy_cdf),
+        cdf_quantile(0.5, strategy_cdf), mean, cdf_quantile(0.75, strategy_cdf),
+        cdf_quantile(0.99999, strategy_cdf)))
+    }
 }
