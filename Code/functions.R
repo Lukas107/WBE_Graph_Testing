@@ -447,9 +447,9 @@ print_strat_summaries = function(number_testers=1){
   
   # Print summary for each strategy
   for (i in 1:4){
-    strategy_cdf= strategie_cdfs[i]
-    mean = sum(strategie_pmfs[i] * 1:19)
-    print(strategy_name[i])
+    strategy_cdf= strategie_cdfs[[i]]
+    mean = sum(strategie_pmfs[[i]] * 1:19)
+    print(strategy_names[i])
     print(sprintf("Min: %d | First Quartile: %d | Median: %d | Mean: %f | Third Quartile: %d | Max: %d",
         cdf_quantile(0, strategy_cdf), cdf_quantile(0.25, strategy_cdf),
         cdf_quantile(0.5, strategy_cdf), mean, cdf_quantile(0.75, strategy_cdf),
