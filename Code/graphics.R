@@ -354,7 +354,10 @@ cdf_plot_compare <- function(cdfs, labels, title_txt) {
     geom_point(size = 2) +
     scale_x_continuous(breaks = seq_len(x_max)) +
     coord_cartesian(ylim = c(0, 1)) +
-    scale_color_manual(values = cols[seq_along(unique(long_df$Strategy))]) +
+    scale_color_manual(
+      values = cols[seq_along(unique(long_df$Strategy))],
+      breaks = labels       # <-- enforce legend order
+    ) +
     labs(
       title = title_txt,
       x = "Benötigte Testzyklen",
@@ -373,14 +376,14 @@ cdf_plot_compare <- function(cdfs, labels, title_txt) {
 plot_cdf_bin_rpop <- cdf_plot_compare(
   cdfs   = list(nary_split_cdfs[[1]], max_rpop_cdfs[[1]]),
   labels = c("Nary-split", "Max-rpop"),
-  title_txt = "Verteilungsfunktion bei einem Probennehmer"
+  title_txt = "Verteilungsfunktionen bei einem Probennehmer"
 )
 
 # Nary Split vs Max_cum_rpop
 plot_cdf_bin_cum_rpop <- cdf_plot_compare(
   cdfs   = list(nary_split_cdfs[[1]], max_cum_rpop_cdfs[[1]]),
-  labels = c("Nary-plit", "Max-cum-rpop"),
-  title_txt = "Verteilungsfunktion bei einem Probennehmer"
+  labels = c("Nary-split", "Max-cum-rpop"),
+  title_txt = "Verteilungsfunktionen bei einem Probennehmer"
 )
 
 
@@ -392,64 +395,61 @@ ggsave("Plots/strategy_distributions/one_tester/nary_cum_one.pdf",
 
 # Compare Strat CDFs 3 Testers ####
 
-# Nary Split vs Max_cum_rpop
-plot_nary_max_cum <- cdf_plot_compare(
-  cdfs   = list(nary_split_cdfs[[3]][1:9], max_cum_rpop_cdfs[[3]][1:9]),
-  labels = c("Nary Split", "Max_cum_rpop"),
-  title_txt = "Verteilungsfunktion bei drei Probennehmern"
-)
-
 # Nary Split vs Rpop
 plot_nary_rpop <- cdf_plot_compare(
   cdfs   = list(nary_split_cdfs[[3]][1:9], max_rpop_cdfs[[3]][1:9]),
-  labels = c("Nary Split", "Rpop"),
-  title_txt = "Verteilungsfunktion bei drei Probennehmern"
+  labels = c("Nary-split", "Max-rpop"),
+  title_txt = "Verteilungsfunktionen bei drei Probennehmern"
 )
 
 # Nary Split vs Skipping_cum_rpop
 plot_nary_skipping <- cdf_plot_compare(
   cdfs   = list(nary_split_cdfs[[3]][1:9], skipping_cum_rpop_cdfs[[3]][1:9]),
-  labels = c("Nary", "Skipping_cum_rpop"),
-  title_txt = "Verteilungsfunktion bei drei Probennehmern"
+  labels = c("Nary-split", "Skipping-cum-rpop"),
+  title_txt = "Verteilungsfunktionen bei drei Probennehmern"
+)
+
+# Nary Split vs Max_cum_rpop
+plot_nary_max_cum <- cdf_plot_compare(
+  cdfs   = list(nary_split_cdfs[[3]][1:9], max_cum_rpop_cdfs[[3]][1:9]),
+  labels = c("Nary-split", "Max-cum-rpop"),
+  title_txt = "Verteilungsfunktionen bei drei Probennehmern"
 )
 
 # Save plots
 ggsave("Plots/strategy_distributions/three_testers/nary_rpop_three.png",
        plot = plot_nary_rpop, width = 8, height = 4, dpi = 150)
-ggsave("Plots/strategy_distributions/three_testers/nary_cum_three.png",
-       plot = plot_nary_max_cum, width = 8, height = 4, dpi = 150)
 ggsave("Plots/strategy_distributions/three_testers/nary_skipping_three.png",
        plot = plot_nary_skipping, width = 8, height = 4, dpi = 150)
+ggsave("Plots/strategy_distributions/three_testers/nary_cum_three.png",
+       plot = plot_nary_max_cum, width = 8, height = 4, dpi = 150)
 
-# Compare Strat CDFs 5 Testers ####
-
-# Nary Split vs Max_cum_rpop
+# Compare Strat CDFs 7 Testers ####
+# Nary-split vs Rpop
 plot_nary_rpop <- cdf_plot_compare(
-  cdfs   = list(nary_split_cdfs[[5]], max_rpop_cdfs[[5]]),
-  labels = c("Nary Split", "Rpop"),
-  title_txt = "Verteilungsfunktion bei fünf Probennehmern"
+  cdfs   = list(nary_split_cdfs[[7]][1:5], max_rpop_cdfs[[7]][1:5]),
+  labels = c("Nary-split", "Max_rpop"),
+  title_txt = "Verteilungsfunktionen bei sieben Probennehmern"
 )
-
-# Nary Split vs Skipping_cum_rpop
+# Nary-split vs Skipping-cum-rpop
 plot_nary_skipping <- cdf_plot_compare(
-  cdfs   = list(nary_split_cdfs[[5]], skipping_cum_rpop_cdfs[[5]]),
-  labels = c("Rpop", "Skipping_cum_rpop"),
-  title_txt = "Verteilungsfunktion bei fünf Probennehmern"
+  cdfs   = list(nary_split_cdfs[[7]][1:5], skipping_cum_rpop_cdfs[[7]][1:5]),
+  labels = c("Nary-split", "Skipping-cum-rpop"),
+  title_txt = "Verteilungsfunktionen bei sieben Probennehmern"
 )
-
-# Nary Split vs Rpop
+# Nary Split vs Max-cum-rpop
 plot_nary_cum <- cdf_plot_compare(
-  cdfs   = list(nary_split_cdfs[[5]], max_cum_rpop_cdfs[[5]]),
-  labels = c("Rpop", "Max_cum_rpop"),
-  title_txt = "Verteilungsfunktion bei fünf Probennehmern"
+  cdfs   = list(nary_split_cdfs[[7]][1:5], max_cum_rpop_cdfs[[7]][1:5]),
+  labels = c("Nary-split", "Max-cum-rpop"),
+  title_txt = "Verteilungsfunktionen bei sieben Probennehmern"
 )
 
 # Save plots
-ggsave("Plots/strategy_distributions/five_testers/nary_rpop_five.png",
+ggsave("Plots/strategy_distributions/seven_testers/nary_rpop_seven.png",
        plot = plot_nary_rpop, width = 8, height = 4, dpi = 150)
-ggsave("Plots/strategy_distributions/five_testers/nary_skipping_five.png",
+ggsave("Plots/strategy_distributions/seven_testers/nary_skipping_seven.png",
        plot = plot_nary_skipping, width = 8, height = 4, dpi = 150)
-ggsave("Plots/strategy_distributions/five_testers/nary_cum_five.png",
+ggsave("Plots/strategy_distributions/seven_testers/nary_cum_seven.png",
        plot = plot_nary_cum, width = 8, height = 4, dpi = 150)
 
 # Average test iterations by number_testers ####
