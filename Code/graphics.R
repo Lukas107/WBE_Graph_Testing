@@ -105,16 +105,68 @@ if (!identical(sort(unique(col_labels)), sort(unique(row_labels)))) {
 
 
 # Create tree plots ####
-
 tree = set_up_tree()
 tree_cum_rpop = set_up_tree()
+tree_simplified = set_up_tree()
 
-png("/Users/lukas/Documents/Unizeug/Bachelorarbeit/Plots/sewage_plot.png",
-    width = 2000, height = 2000, res = 900)
+`%||%` <- function(a, b) if (is.null(a)) b else a
+
+all_nodes <- Traverse(tree_cum_rpop, traversal = "pre-order")
+cum_lookup <- setNames(
+  vapply(all_nodes, function(n) n$cum_rpop %||% NA_real_, numeric(1)),
+  vapply(all_nodes, function(n) n$name, character(1))
+)
+
+edits <- list(
+  list(
+    parent = "KLA_1",
+    remove = c("RÜB_30", "RÜB_31", "RÜB_32",
+               "SKO_37", "SKO_40",
+               "SKU_46", "SKU_47", "SKU_50", "SKU_66"),
+    add = "other9"
+  ),
+  list(
+    parent = "SKU_59",
+    remove = c("RÜ_12", "RÜ_17", "RÜ_18",
+               "RÜ_22", "RÜ_24", "RÜ_25",
+               "RÜB_29", "SKU_49"),
+    add = "other8"
+  )
+)
+
+for (e in edits) {
+  parent <- FindNode(tree_simplified, e$parent)
+  if (is.null(parent)) next
+  
+  sum_removed <- sum(cum_lookup[e$remove], na.rm = TRUE)
+  
+  # Remove selected children
+  for (child in e$remove) {
+    if (child %in% names(parent$children)) {
+      parent$RemoveChild(child)
+    }
+  }
+  
+  # Add aggregated node
+  other_node <- parent$AddChild(e$add)
+  other_node$rpop <- sum_removed
+}
+
+RecalcCumRpop <- function(node) {
+  if (!node$isLeaf) {
+    for (ch in node$children) RecalcCumRpop(ch)
+  }
+  own  <- if (is.null(node$rpop) || is.na(node$rpop)) 0 else node$rpop
+  kids <- if (node$isLeaf) 0 else sum(vapply(node$children, function(ch) ch$cum_rpop %||% 0, numeric(1)))
+  node$cum_rpop <- own + kids
+}
+RecalcCumRpop(tree_simplified)
+
 
 # style edges on the tree (data.tree styling still works)
 SetEdgeStyle(tree, arrowhead = "vee", dir = "back")
 SetEdgeStyle(tree_cum_rpop, arrowhead = "vee", dir = "back")
+SetEdgeStyle(tree_simplified, arrowhead = "vee", dir = "back")
 
 # convert the tree to a DiagrammeR graph and export
 # Add rpop to node labels
@@ -126,10 +178,20 @@ SetNodeStyle(tree_cum_rpop, label = function(node) {
   }
 })
 
+# Highlight the "otherx" nodes
+other_nodes <- c("other8", "other9")
+
+SetNodeStyle(
+  tree_simplified,
+  fontcolor = function(node) {
+    if (node$name %in% other_nodes) "red" else "black"
+  }
+)
 
 # Then convert to DiagrammeR graph and export
 tree_diagrammergraph = ToDiagrammeRGraph(tree)
 tree_rpop_diagrammergraph = ToDiagrammeRGraph(tree_cum_rpop)
+tree_simplified_graph <- ToDiagrammeRGraph(tree_simplified)
 
 tree_diagrammergraph <- add_global_graph_attrs(
   tree_diagrammergraph,
@@ -140,6 +202,13 @@ tree_diagrammergraph <- add_global_graph_attrs(
 
 tree_rpop_diagrammergraph <- add_global_graph_attrs(
   graph = tree_rpop_diagrammergraph,
+  attr  = c("label", "labelloc", "labeljust", "fontsize"),
+  value = c("Abwassernetz Graph", "t", "c", "60"),
+  attr_type = rep("graph", 4)
+)
+
+tree_simplified_graph <- add_global_graph_attrs(
+  graph = tree_simplified_graph,
   attr  = c("label", "labelloc", "labeljust", "fontsize"),
   value = c("Abwassernetz Graph", "t", "c", "60"),
   attr_type = rep("graph", 4)
@@ -160,6 +229,40 @@ DiagrammeR::export_graph(
   width = 6000,
   height = 6000
 )
+DiagrammeR::export_graph(
+  graph = tree_simplified_graph,
+  file_name = "Plots/tree_plots/tree_plot_simplified.png",
+  file_type = "png",
+  width = 3000,
+  height = 3000
+)
+
+
+SetNodeStyle(
+  tree_simplified,
+  label = function(node) paste0(node$name, "\n", round(node$cum_rpop, 3)),
+  fontcolor = function(node) {
+    if (node$name %in% other_nodes) "red" else "black"
+  }
+)
+
+tree_simplified_cum_graph <- ToDiagrammeRGraph(tree_simplified)
+
+tree_simplified_cum_graph <- add_global_graph_attrs(
+  graph = tree_simplified_cum_graph,
+  attr  = c("label", "labelloc", "labeljust", "fontsize"),
+  value = c("Abwassernetz Graph", "t", "c", "60"),
+  attr_type = rep("graph", 4)
+)
+
+DiagrammeR::export_graph(
+  graph = tree_simplified_cum_graph,
+  file_name = "Plots/tree_plots/tree_plot_simplified_cum_rpop.png",
+  file_type = "png",
+  width = 3000,
+  height = 3000
+)
+
 
 # Population + area boxplots ####
 # Precompute means
@@ -217,7 +320,7 @@ scatter_area_pop <- ggplot(Grundlagendaten, aes(x = area_ha, y = pop / 1000)) +
 
 # Save scatterplot
 ggsave("Plots/scatter_area_pop.pdf",
-       plot = scatter_area_pop, width = 7, height = 5, dpi = 150)
+       plot = scatter_area_pop, width = 5, height = 3, dpi = 150)
 
 # Calculate strat diagnostics ####
 # This will typically take a long time
@@ -397,22 +500,29 @@ ggsave("Plots/strategy_distributions/one_tester/nary_cum_one.pdf",
 
 # Nary Split vs Rpop
 plot_nary_rpop <- cdf_plot_compare(
-  cdfs   = list(nary_split_cdfs[[3]][1:9], max_rpop_cdfs[[3]][1:9]),
+  cdfs   = list(nary_split_cdfs[[3]][1:10], max_rpop_cdfs[[3]][1:10]),
   labels = c("Nary-split", "Max-rpop"),
   title_txt = "Verteilungsfunktionen bei drei Probennehmern"
 )
 
 # Nary Split vs Skipping_cum_rpop
 plot_nary_skipping <- cdf_plot_compare(
-  cdfs   = list(nary_split_cdfs[[3]][1:9], skipping_cum_rpop_cdfs[[3]][1:9]),
+  cdfs   = list(nary_split_cdfs[[3]][1:10], skipping_cum_rpop_cdfs[[3]][1:10]),
   labels = c("Nary-split", "Skipping-cum-rpop"),
   title_txt = "Verteilungsfunktionen bei drei Probennehmern"
 )
 
 # Nary Split vs Max_cum_rpop
-plot_nary_max_cum <- cdf_plot_compare(
-  cdfs   = list(nary_split_cdfs[[3]][1:9], max_cum_rpop_cdfs[[3]][1:9]),
+plot_nary_cum <- cdf_plot_compare(
+  cdfs   = list(nary_split_cdfs[[3]][1:10], max_cum_rpop_cdfs[[3]][1:10]),
   labels = c("Nary-split", "Max-cum-rpop"),
+  title_txt = "Verteilungsfunktionen bei drei Probennehmern"
+)
+
+# Skipping-cum-rpop vs Max_cum_rpop
+plot_skipping_cum <- cdf_plot_compare(
+  cdfs   = list(skipping_cum_rpop_cdfs[[3]][1:10], max_cum_rpop_cdfs[[3]][1:10]),
+  labels = c("Skipping-cum-rpop", "Max-cum-rpop"),
   title_txt = "Verteilungsfunktionen bei drei Probennehmern"
 )
 
@@ -423,23 +533,25 @@ ggsave("Plots/strategy_distributions/three_testers/nary_skipping_three.png",
        plot = plot_nary_skipping, width = 8, height = 4, dpi = 150)
 ggsave("Plots/strategy_distributions/three_testers/nary_cum_three.png",
        plot = plot_nary_max_cum, width = 8, height = 4, dpi = 150)
+ggsave("Plots/strategy_distributions/three_testers/skipping_cum_three.png",
+       plot = plot_skipping_cum, width = 8, height = 4, dpi = 150)
 
 # Compare Strat CDFs 7 Testers ####
 # Nary-split vs Rpop
 plot_nary_rpop <- cdf_plot_compare(
-  cdfs   = list(nary_split_cdfs[[7]][1:5], max_rpop_cdfs[[7]][1:5]),
+  cdfs   = list(nary_split_cdfs[[7]][1:6], max_rpop_cdfs[[7]][1:6]),
   labels = c("Nary-split", "Max_rpop"),
   title_txt = "Verteilungsfunktionen bei sieben Probennehmern"
 )
 # Nary-split vs Skipping-cum-rpop
 plot_nary_skipping <- cdf_plot_compare(
-  cdfs   = list(nary_split_cdfs[[7]][1:5], skipping_cum_rpop_cdfs[[7]][1:5]),
+  cdfs   = list(nary_split_cdfs[[7]][1:6], skipping_cum_rpop_cdfs[[7]][1:6]),
   labels = c("Nary-split", "Skipping-cum-rpop"),
   title_txt = "Verteilungsfunktionen bei sieben Probennehmern"
 )
 # Nary Split vs Max-cum-rpop
 plot_nary_cum <- cdf_plot_compare(
-  cdfs   = list(nary_split_cdfs[[7]][1:5], max_cum_rpop_cdfs[[7]][1:5]),
+  cdfs   = list(nary_split_cdfs[[7]][1:6], max_cum_rpop_cdfs[[7]][1:6]),
   labels = c("Nary-split", "Max-cum-rpop"),
   title_txt = "Verteilungsfunktionen bei sieben Probennehmern"
 )
