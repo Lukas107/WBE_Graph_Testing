@@ -201,7 +201,7 @@ mark_excluded <- function(node) {
 }
 
 # Try to split probability mass in 1/(number_testers+1)
-nary_split <- function(root, number_testers) {
+nary_split_original <- function(root, number_testers) {
   
   # The root node is always assumed to be contaminated, no strategy necessary
   if (root$totalCount <= 1) stop("Passed too few nodes to nary_split")
@@ -222,7 +222,7 @@ nary_split <- function(root, number_testers) {
     # Get all nodes that are fit for nary splitting
     candidates <- Filter(function(n) {
       !identical(n, root) && !n$excluded &&!(n$name %in% selected_names)
-      }, nodes)
+    }, nodes)
     
     # Main part: Try to split into n parts
     if (length(candidates) >= 1) {
@@ -244,6 +244,82 @@ nary_split <- function(root, number_testers) {
         parent$nary_cum_rpop <- parent$nary_cum_rpop - mass
         parent <- parent$parent
       }
+      
+      # Exclude subtree, so we don't pick it again
+      mark_excluded(chosen_node)
+    }
+    # Fallback: If all remaining nodes have been excluded, choose highest rpop
+    # nodes from excluded
+    else {
+      # Get excluded nodes that have not already been picked
+      excluded <- Filter(function(n) !identical(n, root) && n$excluded &&
+                           !(n$name %in% selected_names), nodes)
+      
+      # If there are no excluded nodes left, we are finished
+      if (length(excluded) == 0) break
+      
+      # Pick excluded node with highest rpop 
+      r_pops <- vapply(excluded, function(n) n$rpop, FUN.VALUE=numeric(1))
+      chosen_node <- excluded[[which.max(r_pops)]]
+      chosen_nodes[[i]] <- chosen_node
+      selected_names[i] <- chosen_node$name
+    }
+  }
+  
+  return(chosen_nodes)
+}
+
+# Try to split probability mass in 1/(number_testers+1)
+nary_split <- function(root, number_testers) {
+  
+  # The root node is always assumed to be contaminated, no strategy necessary
+  if (root$totalCount <= 1) stop("Passed too few nodes to nary_split")
+  
+  nodes <- Traverse(root)
+  
+  # Initialize working fields
+  root$Set(nary_cum_rpop = root$Get("cum_rpop"), excluded = FALSE)
+  
+  # Calculate number of tests that can be performed this step
+  num_nodes_to_select <- min(number_testers, length(nodes))
+  
+  # These will later be used to store results
+  selected_names <- character(num_nodes_to_select)
+  chosen_nodes   <- vector("list", num_nodes_to_select)
+  
+  # Used to determine target dynamically in each iteration
+  remaining_cum_rpop = 1
+  
+  for (i in 1:number_testers) {
+    # Get all nodes that are fit for nary splitting
+    candidates <- Filter(function(n) {
+      !identical(n, root) && !n$excluded &&!(n$name %in% selected_names)
+      }, nodes)
+    
+    # Main part: Try to split into n parts
+    if (length(candidates) >= 1) {
+      
+      # Try to split remaining probability mass as evenly as possible
+      remaining_tests = number_testers - i + 1
+      target <- remaining_cum_rpop / (remaining_tests+1)
+      
+      # Choose non-excluded node closest to target
+      scores <- vapply(candidates, function(node) {-abs(node$nary_cum_rpop - target)},
+                       numeric(1))
+      chosen_node <- candidates[[which.max(scores)]]
+      chosen_nodes[[i]] <- chosen_node
+      selected_names[i] <- chosen_node$name
+      
+      # Subtract its mass from all ancestors
+      chosen_node_mass <- chosen_node$nary_cum_rpop
+      parent <- chosen_node$parent
+      while (!is.null(parent)) {
+        parent$nary_cum_rpop <- parent$nary_cum_rpop - chosen_node_mass
+        parent <- parent$parent
+      }
+      
+      # Subtract its mass from the remaining cum_rpop
+      remaining_cum_rpop = remaining_cum_rpop - chosen_node_mass
       
       # Exclude subtree, so we don't pick it again
       mark_excluded(chosen_node)
