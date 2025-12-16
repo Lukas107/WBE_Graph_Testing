@@ -201,75 +201,6 @@ mark_excluded <- function(node) {
 }
 
 # Try to split probability mass in 1/(number_testers+1)
-nary_split_original <- function(root, number_testers) {
-  
-  # The root node is always assumed to be contaminated, no strategy necessary
-  if (root$totalCount <= 1) stop("Passed too few nodes to nary_split")
-  
-  nodes <- Traverse(root)
-  
-  # Initialize working fields
-  root$Set(nary_cum_rpop = root$Get("cum_rpop"), excluded = FALSE)
-  
-  # Calculate number of tests that can be performed this step
-  num_nodes_to_select <- min(number_testers, length(nodes))
-  
-  # These will later be used to store results
-  selected_names <- character(num_nodes_to_select)
-  chosen_nodes   <- vector("list", num_nodes_to_select)
-  
-  for (i in 1:number_testers) {
-    # Get all nodes that are fit for nary splitting
-    candidates <- Filter(function(n) {
-      !identical(n, root) && !n$excluded &&!(n$name %in% selected_names)
-    }, nodes)
-    
-    # Main part: Try to split into n parts
-    if (length(candidates) >= 1) {
-      
-      # Try to give each partition the same probability mass
-      target <- 1 / (number_testers+1)
-      
-      # Choose non-excluded node closest to target
-      scores <- vapply(candidates, function(node) {-abs(node$nary_cum_rpop - target)},
-                       numeric(1))
-      chosen_node <- candidates[[which.max(scores)]]
-      chosen_nodes[[i]] <- chosen_node
-      selected_names[i] <- chosen_node$name
-      
-      # Subtract its mass from all ancestors
-      mass <- chosen_node$nary_cum_rpop
-      parent <- chosen_node$parent
-      while (!is.null(parent)) {
-        parent$nary_cum_rpop <- parent$nary_cum_rpop - mass
-        parent <- parent$parent
-      }
-      
-      # Exclude subtree, so we don't pick it again
-      mark_excluded(chosen_node)
-    }
-    # Fallback: If all remaining nodes have been excluded, choose highest rpop
-    # nodes from excluded
-    else {
-      # Get excluded nodes that have not already been picked
-      excluded <- Filter(function(n) !identical(n, root) && n$excluded &&
-                           !(n$name %in% selected_names), nodes)
-      
-      # If there are no excluded nodes left, we are finished
-      if (length(excluded) == 0) break
-      
-      # Pick excluded node with highest rpop 
-      r_pops <- vapply(excluded, function(n) n$rpop, FUN.VALUE=numeric(1))
-      chosen_node <- excluded[[which.max(r_pops)]]
-      chosen_nodes[[i]] <- chosen_node
-      selected_names[i] <- chosen_node$name
-    }
-  }
-  
-  return(chosen_nodes)
-}
-
-# Try to split probability mass in 1/(number_testers+1)
 nary_split <- function(root, number_testers) {
   
   # The root node is always assumed to be contaminated, no strategy necessary
@@ -350,8 +281,8 @@ nary_split <- function(root, number_testers) {
 # Code for testing strategies ####
 
 # Calculate needed testing iterations, for a tree with a specified contamination
-needed_testing_iterations <- function(root, strategy, number_testers = 1,
-                                      verbose = FALSE) {
+needed_testing_iterations <- function(root, strategy, number_testers=1,
+                                      verbose=FALSE) {
   test_count  <- 0L
   current_node <- root
   
@@ -403,10 +334,10 @@ needed_testing_iterations <- function(root, strategy, number_testers = 1,
   return(test_count)
 }
 
+
 # Analytically derive distribution for a strat with one sample taker
-cdf_length = 19
-get_strat_pmf = function(strategy,  number_testers=1, verbose=TRUE) {
-  probs = rep(0, cdf_length)
+strat_testcycle_pmf = function(strategy,  number_testers=1, verbose=TRUE) {
+  probs = rep(0, 19)
   
   for (node_name in col_labels) {
     root = set_up_tree(contaminated_node=node_name)
@@ -416,16 +347,16 @@ get_strat_pmf = function(strategy,  number_testers=1, verbose=TRUE) {
     # Only consider nodes which could actually be contaminated
     if(node_rpop == 0) next
     
-    test_count = needed_testing_iterations(root, strategy,
+    testcycle_count = needed_testing_iterations(root, strategy,
         number_testers=number_testers)
-    probs[test_count] = probs[test_count] + node_rpop
+    probs[testcycle_count] = probs[testcycle_count] + node_rpop
   }
   return(probs)
 }
 
 
 # Needed total tests, for a tree with a specified contamination
-needed_total_tests <- function(root, strategy, number_testers = 1,
+needed_total_tests <- function(root, strategy, number_testers=1,
                                verbose = FALSE) {
   total_tests  <- 0L
   current_node <- root
@@ -476,8 +407,8 @@ needed_total_tests <- function(root, strategy, number_testers = 1,
 
 
 # Calculate average tests needed by a particular strategy
-average_total_tests <- function(strategy, number_testers = 1, verbose = TRUE) {
-  weighted_sum <- 0
+strat_total_tests_pmf <- function(strategy, number_testers=1, verbose=TRUE) {
+  probs = rep(0, 50)
   weight_total <- 0
   
   # Add up needed tests over all nodes
@@ -492,9 +423,9 @@ average_total_tests <- function(strategy, number_testers = 1, verbose = TRUE) {
     total_tests <- needed_total_tests(root, strategy,
                                       number_testers=number_testers)
     # Add needed tests to result
-    weighted_sum  <- weighted_sum + total_tests * node_rpop
+    probs[total_tests] = probs[total_tests] + node_rpop
   }
-  return(weighted_sum)
+  return(probs)
 }
 
 
@@ -505,9 +436,9 @@ cdf_quantile = function(quantile, cdf){
   return(findInterval(quantile, cdf) + 1)
 }
 
-mean_tests = function(pmf) {
-  cdf_length = length(pmf)
-  return(sum(1:cdf_length * pmf))
+pmf_to_mean = function(pmf) {
+  pmf_length = length(pmf)
+  return(sum(1:pmf_length * pmf))
 }
 
 print_strat_summaries = function(number_testers=1){

@@ -323,42 +323,61 @@ ggsave("Plots/scatter_area_pop.pdf",
        plot = scatter_area_pop, width = 5, height = 3, dpi = 150)
 
 # Calculate strat diagnostics ####
+
 # This will typically take a long time
 
 # Compute PMFs for each tester count 1:10
-nary_split_pmfs <- lapply(1:10, function(n) {
-  get_strat_pmf(nary_split, number_testers = n)
+nary_testcycle_pmfs <- lapply(1:10, function(n) {
+  strat_testcycle_pmf(nary_split, number_testers = n)
 })
-max_cum_rpop_pmfs <- lapply(1:10, function(n) {
-  get_strat_pmf(max_cum_rpop, number_testers = n)
+cum_testcycle_pmfs <- lapply(1:10, function(n) {
+  strat_testcycle_pmf(max_cum_rpop, number_testers = n)
 })
-max_rpop_pmfs <- lapply(1:10, function(n) {
-  get_strat_pmf(max_rpop, number_testers = n)
+rpop_testcycle_pmfs <- lapply(1:10, function(n) {
+  strat_testcycle_pmf(max_rpop, number_testers = n)
 })
-skipping_cum_rpop_pmfs <- lapply(1:10, function(n) {
-  get_strat_pmf(skipping_cum_rpop, number_testers = n)
+skipping_testcycle_pmfs <- lapply(1:10, function(n) {
+  strat_testcycle_pmf(skipping_cum_rpop, number_testers = n)
 })
 
 # Compute corresponding CDFs
-nary_split_cdfs <- lapply(nary_split_pmfs, cumsum)
-max_cum_rpop_cdfs <- lapply(max_cum_rpop_pmfs, cumsum)
-max_rpop_cdfs <- lapply(max_rpop_pmfs, cumsum)
-skipping_cum_rpop_cdfs <- lapply(skipping_cum_rpop_pmfs, cumsum)
+nary_testcycle_cdfs <- lapply(nary_testcycle_pmfs, cumsum)
+cum_testcycle_cdfs <- lapply(cum_testcycle_pmfs, cumsum)
+rpop_testcycle_cdfs <- lapply(rpop_testcycle_pmfs, cumsum)
+skipping_testcycle_cdfs <- lapply(skipping_testcycle_pmfs, cumsum)
 
 # Compute average total tests for each tester count 1:10
-nary_split_total_tests <- sapply(1:10, function(n) {
-  average_total_tests(nary_split, number_testers=n)
+nary_test_pmfs <- lapply(1:10, function(n) {
+  strat_total_tests_pmf(nary_split, number_testers = n)
 })
-max_cum_rpop_total_tests <- sapply(1:10, function(n) {
-  average_total_tests(max_cum_rpop, number_testers=n)
+rpop_test_pmfs <- lapply(1:10, function(n) {
+  strat_total_tests_pmf(max_rpop, number_testers = n)
 })
-max_rpop_total_tests <- sapply(1:10, function(n) {
-  average_total_tests(max_rpop, number_testers=n)
+skipping_test_pmfs <- lapply(1:10, function(n) {
+  strat_total_tests_pmf(skipping_cum_rpop, number_testers = n)
 })
-skipping_cum_rpop_total_tests <- sapply(1:10, function(n) {
-  average_total_tests(skipping_cum_rpop, number_testers=n)
+cum_test_pmfs <- lapply(1:10, function(n) {
+  strat_total_tests_pmf(max_cum_rpop, number_testers = n)
 })
 
+# Compute corresponding CDFs for total tests
+nary_test_cdfs     <- lapply(nary_test_pmfs, cumsum)
+rpop_test_cdfs     <- lapply(rpop_test_pmfs, cumsum)
+skipping_test_cdfs <- lapply(skipping_test_pmfs, cumsum)
+cum_test_cdfs      <- lapply(cum_test_pmfs, cumsum)
+
+nary_mean_tests <- sapply(1:10, function(n) {
+  pmf_to_mean(nary_test_pmfs[[n]])
+})
+rpop_mean_tests <- sapply(1:10, function(n) {
+  pmf_to_mean(rpop_test_pmfs[[n]])
+})
+skipping_mean_tests <- sapply(1:10, function(n) {
+  pmf_to_mean(skipping_test_pmfs[[n]])
+})
+cum_mean_tests <- sapply(1:10, function(n) {
+  pmf_to_mean(cum_test_pmfs[[n]])
+})
 
 
 
@@ -383,19 +402,19 @@ pmf_barplot <- function(pmf, ymax, title) {
 
 # This is used to set the upper limit for all y-axes
 ymax_pmf <- max(
-  c(nary_split_pmfs[[1]], max_cum_rpop_pmfs[[1]], max_rpop_pmfs[[1]])
+  c(nary_testcycle_pmfs[[1]], cum_testcycle_pmfs[[1]], rpop_testcycle_pmfs[[1]])
 )
 
 # Barplot 1: nary split
-plot_binary <- pmf_barplot(nary_split_pmfs[[1]], ymax_pmf,
+plot_binary <- pmf_barplot(nary_testcycle_pmfs[[1]], ymax_pmf,
                            title="Nary-split Strategie")
 
 # Barplot 2: kumulierte Bevölkerung
-plot_cum_rpop <-pmf_barplot(max_cum_rpop_pmfs[[1]], ymax_pmf,
+plot_cum_rpop <-pmf_barplot(cum_testcycle_pmfs[[1]], ymax_pmf,
                             title="Max-cum-rpop Strategie")
 
 # Barplot 3: rpop
-plot_rpop <- pmf_barplot(max_rpop_pmfs[[1]], ymax_pmf,
+plot_rpop <- pmf_barplot(rpop_testcycle_pmfs[[1]], ymax_pmf,
                          title="Max-rpop Strategie")
 
 # Arrange the three barplots vertically
@@ -427,9 +446,9 @@ cdf_plot <- function(cdf, title_txt) {
 }
 
 # CDF plots 1 tester
-plot_binary_cdf <- cdf_plot(nary_split_cdfs[[1]], "Nary-split Strategie")
-plot_cum_rpop_cdf <- cdf_plot(max_cum_rpop_cdfs[[1]], "Max-cum-rpop Strategie")
-plot_rpop_cdf   <- cdf_plot(max_rpop_cdfs[[1]],   "Max-rpop Strategie")
+plot_binary_cdf <- cdf_plot(nary_testcycle_cdfs[[1]], "Nary-split Strategie")
+plot_cum_rpop_cdf <- cdf_plot(cum_testcycle_cdfs[[1]], "Max-cum-rpop Strategie")
+plot_rpop_cdf   <- cdf_plot(rpop_testcycle_cdfs[[1]],   "Max-rpop Strategie")
 
 # Arrange the three CDF plots vertically
 strat_cdf_plots <- plot_binary_cdf / plot_cum_rpop_cdf / plot_rpop_cdf
@@ -438,7 +457,7 @@ strat_cdf_plots <- plot_binary_cdf / plot_cum_rpop_cdf / plot_rpop_cdf
 ggsave("Plots/strategy_distributions/one_tester/strat_distributions_cdf.pdf",
        plot = strat_cdf_plots, width = 8, height = 10, dpi = 150)
 
-# Compare Strat CDFs 1 Tester ####
+# Compare strat testcycle CDFs 1 tester ####
 
 cdf_plot_compare <- function(cdfs, labels, title_txt) {
   long_df <- do.call(rbind, Map(function(cdf, label) {
@@ -477,14 +496,14 @@ cdf_plot_compare <- function(cdfs, labels, title_txt) {
 
 # Nary Split vs Rpop
 plot_cdf_bin_rpop <- cdf_plot_compare(
-  cdfs   = list(nary_split_cdfs[[1]], max_rpop_cdfs[[1]]),
+  cdfs   = list(nary_testcycle_cdfs[[1]], rpop_testcycle_cdfs[[1]]),
   labels = c("Nary-split", "Max-rpop"),
   title_txt = "Verteilungsfunktionen bei einem Probennehmer"
 )
 
 # Nary Split vs Max_cum_rpop
 plot_cdf_bin_cum_rpop <- cdf_plot_compare(
-  cdfs   = list(nary_split_cdfs[[1]], max_cum_rpop_cdfs[[1]]),
+  cdfs   = list(nary_testcycle_cdfs[[1]], cum_testcycle_cdfs[[1]]),
   labels = c("Nary-split", "Max-cum-rpop"),
   title_txt = "Verteilungsfunktionen bei einem Probennehmer"
 )
@@ -496,73 +515,135 @@ ggsave("Plots/strategy_distributions/one_tester/nary_rpop_one.pdf",
 ggsave("Plots/strategy_distributions/one_tester/nary_cum_one.pdf",
        plot = plot_cdf_bin_cum_rpop, width = 8, height = 4, dpi = 150)
 
-# Compare Strat CDFs 3 Testers ####
+# Compare strat testcycle CDFs 3 testers ####
 
 # Nary Split vs Rpop
 plot_nary_rpop <- cdf_plot_compare(
-  cdfs   = list(nary_split_cdfs[[3]][1:10], max_rpop_cdfs[[3]][1:10]),
+  cdfs   = list(nary_testcycle_cdfs[[3]][1:10], rpop_testcycle_cdfs[[3]][1:10]),
   labels = c("Nary-split", "Max-rpop"),
   title_txt = "Verteilungsfunktionen bei drei Probennehmern"
 )
 
 # Nary Split vs Skipping_cum_rpop
 plot_nary_skipping <- cdf_plot_compare(
-  cdfs   = list(nary_split_cdfs[[3]][1:10], skipping_cum_rpop_cdfs[[3]][1:10]),
+  cdfs   = list(nary_testcycle_cdfs[[3]][1:10], skipping_testcycle_cdfs[[3]][1:10]),
   labels = c("Nary-split", "Skipping-cum-rpop"),
   title_txt = "Verteilungsfunktionen bei drei Probennehmern"
 )
 
 # Nary Split vs Max_cum_rpop
 plot_nary_cum <- cdf_plot_compare(
-  cdfs   = list(nary_split_cdfs[[3]][1:10], max_cum_rpop_cdfs[[3]][1:10]),
+  cdfs   = list(nary_testcycle_cdfs[[3]][1:10], cum_testcycle_cdfs[[3]][1:10]),
   labels = c("Nary-split", "Max-cum-rpop"),
   title_txt = "Verteilungsfunktionen bei drei Probennehmern"
 )
 
 # Skipping-cum-rpop vs Max_cum_rpop
 plot_skipping_cum <- cdf_plot_compare(
-  cdfs   = list(skipping_cum_rpop_cdfs[[3]][1:10], max_cum_rpop_cdfs[[3]][1:10]),
+  cdfs   = list(skipping_testcycle_cdfs[[3]][1:10], cum_testcycle_cdfs[[3]][1:10]),
   labels = c("Skipping-cum-rpop", "Max-cum-rpop"),
   title_txt = "Verteilungsfunktionen bei drei Probennehmern"
 )
 
 # Save plots
-ggsave("Plots/strategy_distributions/three_testers/nary_rpop_three.png",
+ggsave("Plots/strategy_distributions/three_testers/nary_rpop_three.pdf",
        plot = plot_nary_rpop, width = 8, height = 4, dpi = 150)
-ggsave("Plots/strategy_distributions/three_testers/nary_skipping_three.png",
+ggsave("Plots/strategy_distributions/three_testers/nary_skipping_three.pdf",
        plot = plot_nary_skipping, width = 8, height = 4, dpi = 150)
-ggsave("Plots/strategy_distributions/three_testers/nary_cum_three.png",
-       plot = plot_nary_max_cum, width = 8, height = 4, dpi = 150)
-ggsave("Plots/strategy_distributions/three_testers/skipping_cum_three.png",
+ggsave("Plots/strategy_distributions/three_testers/nary_cum_three.pdf",
+       plot = plot_nary_cum, width = 8, height = 4, dpi = 150)
+ggsave("Plots/strategy_distributions/three_testers/skipping_cum_three.pdf",
        plot = plot_skipping_cum, width = 8, height = 4, dpi = 150)
 
-# Compare Strat CDFs 7 Testers ####
+# Compare strat testcycle CDFs 7 testers ####
 # Nary-split vs Rpop
 plot_nary_rpop <- cdf_plot_compare(
-  cdfs   = list(nary_split_cdfs[[7]][1:6], max_rpop_cdfs[[7]][1:6]),
+  cdfs   = list(nary_testcycle_cdfs[[7]][1:6], rpop_testcycle_cdfs[[7]][1:6]),
   labels = c("Nary-split", "Max_rpop"),
   title_txt = "Verteilungsfunktionen bei sieben Probennehmern"
 )
 # Nary-split vs Skipping-cum-rpop
 plot_nary_skipping <- cdf_plot_compare(
-  cdfs   = list(nary_split_cdfs[[7]][1:6], skipping_cum_rpop_cdfs[[7]][1:6]),
+  cdfs   = list(nary_testcycle_cdfs[[7]][1:6], skipping_testcycle_cdfs[[7]][1:6]),
   labels = c("Nary-split", "Skipping-cum-rpop"),
   title_txt = "Verteilungsfunktionen bei sieben Probennehmern"
 )
 # Nary Split vs Max-cum-rpop
 plot_nary_cum <- cdf_plot_compare(
-  cdfs   = list(nary_split_cdfs[[7]][1:6], max_cum_rpop_cdfs[[7]][1:6]),
+  cdfs   = list(nary_testcycle_cdfs[[7]][1:6], cum_testcycle_cdfs[[7]][1:6]),
   labels = c("Nary-split", "Max-cum-rpop"),
   title_txt = "Verteilungsfunktionen bei sieben Probennehmern"
 )
 
 # Save plots
-ggsave("Plots/strategy_distributions/seven_testers/nary_rpop_seven.png",
+ggsave("Plots/strategy_distributions/seven_testers/nary_rpop_seven.pdf",
        plot = plot_nary_rpop, width = 8, height = 4, dpi = 150)
-ggsave("Plots/strategy_distributions/seven_testers/nary_skipping_seven.png",
+ggsave("Plots/strategy_distributions/seven_testers/nary_skipping_seven.pdf",
        plot = plot_nary_skipping, width = 8, height = 4, dpi = 150)
-ggsave("Plots/strategy_distributions/seven_testers/nary_cum_seven.png",
+ggsave("Plots/strategy_distributions/seven_testers/nary_cum_seven.pdf",
        plot = plot_nary_cum, width = 8, height = 4, dpi = 150)
+
+# Compare strat total tests CDFs 3 testers ####
+
+# Nary Split vs Rpop
+plot_nary_rpop <- cdf_plot_compare(
+  cdfs      = list(nary_test_cdfs[[3]][1:25], rpop_test_cdfs[[3]][1:25]),
+  labels    = c("Nary-split", "Max-rpop"),
+  title_txt = "Verteilungsfunktionen (Gesamtzahl Tests) bei drei Probennehmern"
+)
+
+# Nary Split vs Skipping-cum-rpop
+plot_nary_skipping <- cdf_plot_compare(
+  cdfs      = list(nary_test_cdfs[[3]][1:25], skipping_test_cdfs[[3]][1:25]),
+  labels    = c("Nary-split", "Skipping-cum-rpop"),
+  title_txt = "Verteilungsfunktionen (Gesamtzahl Tests) bei drei Probennehmern"
+)
+
+# Nary Split vs Max-cum-rpop
+plot_nary_cum <- cdf_plot_compare(
+  cdfs      = list(nary_test_cdfs[[3]][1:25], cum_test_cdfs[[3]][1:25]),
+  labels    = c("Nary-split", "Max-cum-rpop"),
+  title_txt = "Verteilungsfunktionen (Gesamtzahl Tests) bei drei Probennehmern"
+)
+
+# Save plots
+ggsave("Plots/strategy_distributions/three_testers/nary_rpop_three_total.pdf",
+       plot = plot_nary_rpop, width = 8, height = 4)
+ggsave("Plots/strategy_distributions/three_testers/nary_skipping_three_total.pdf",
+       plot = plot_nary_skipping, width = 8, height = 4)
+ggsave("Plots/strategy_distributions/three_testers/nary_cum_three_total.pdf",
+       plot = plot_nary_cum, width = 8, height = 4)
+
+# Compare strat total tests CDFs 7 testers ####
+
+# Nary Split vs Rpop
+plot_nary_rpop <- cdf_plot_compare(
+  cdfs      = list(nary_test_cdfs[[7]][1:39], rpop_test_cdfs[[7]][1:39]),
+  labels    = c("Nary-split", "Max-rpop"),
+  title_txt = "Verteilungsfunktionen (Gesamtzahl Tests) bei sieben Probennehmern"
+)
+
+# Nary Split vs Skipping-cum-rpop
+plot_nary_skipping <- cdf_plot_compare(
+  cdfs      = list(nary_test_cdfs[[7]][1:39], skipping_test_cdfs[[7]][1:39]),
+  labels    = c("Nary-split", "Skipping-cum-rpop"),
+  title_txt = "Verteilungsfunktionen (Gesamtzahl Tests) bei sieben Probennehmern"
+)
+
+# Nary Split vs Max-cum-rpop
+plot_nary_cum <- cdf_plot_compare(
+  cdfs      = list(nary_test_cdfs[[7]][1:39], cum_test_cdfs[[7]][1:39]),
+  labels    = c("Nary-split", "Max-cum-rpop"),
+  title_txt = "Verteilungsfunktionen (Gesamtzahl Tests) bei sieben Probennehmern"
+)
+
+# Save plots
+ggsave("Plots/strategy_distributions/seven_testers/nary_rpop_seven_total.pdf",
+       plot = plot_nary_rpop, width = 8, height = 4)
+ggsave("Plots/strategy_distributions/seven_testers/nary_skipping_seven_total.pdf",
+       plot = plot_nary_skipping, width = 8, height = 4)
+ggsave("Plots/strategy_distributions/seven_testers/nary_cum_seven_total.pdf",
+       plot = plot_nary_cum, width = 8, height = 4)
 
 # Average test iterations by number_testers ####
 
@@ -571,11 +652,11 @@ means_df <- data.frame(
   number_testers = rep(1:10, 4),
   strategy = rep(c("nary-split", "max-cum-rpop", "max-rpop", "skipping-cum-rpop"),
                  each = 10),
-  mean_tests = c(
-    sapply(nary_split_pmfs[1:10],       mean_tests),
-    sapply(max_cum_rpop_pmfs[1:10],      mean_tests),
-    sapply(max_rpop_pmfs[1:10],         mean_tests),
-    sapply(skipping_cum_rpop_pmfs[1:10], mean_tests)
+  mean_test_col = c(
+    sapply(nary_testcycle_pmfs[1:10], pmf_to_mean),
+    sapply(cum_testcycle_pmfs[1:10], pmf_to_mean),
+    sapply(rpop_testcycle_pmfs[1:10], pmf_to_mean),
+    sapply(skipping_testcycle_pmfs[1:10], pmf_to_mean)
   )
 )
 
@@ -586,10 +667,10 @@ means_df$strategy <- factor(
 )
 
 # Shared y-axis limit
-ymax_common <- ceiling(max(means_df$mean_tests))
+ymax_common <- ceiling(max(means_df$mean_test_col))
 
 # Combined barplot with HCL spectrum colours
-p_combined <- ggplot(means_df, aes(x = factor(number_testers), y = mean_tests,
+p_combined <- ggplot(means_df, aes(x = factor(number_testers), y = mean_test_col,
                                    fill = strategy)) +
   geom_col(position = position_dodge(width=0.8), color = "black",
            width = 0.7) +
@@ -627,24 +708,24 @@ ggsave("Plots/strategy_distributions/barplot_mean_test_iterations.pdf",
 # Compute mean tests for each strategy and number of testers (1–10)
 total_tests_df <- data.frame(
   number_testers = rep(1:10, 4),
-  strategy = rep(c("nary-split", "max-cum-rpop", "max-rpop", "skipping-cum-rpop"),
+  strategy = rep(c("Nary-split", "Max-cum-rpop", "Max-rpop", "Skipping-cum-rpop"),
                  each = 10),
-  mean_tests = c(nary_split_total_tests[1:10],
-                 max_cum_rpop_total_tests[1:10],
-                 max_rpop_total_tests[1:10],
-                 skipping_cum_rpop_total_tests[1:10]))
+  mean_test_col = c(nary_mean_tests[1:10],
+                 cum_mean_tests[1:10],
+                 rpop_mean_tests[1:10],
+                 skipping_mean_tests[1:10]))
 
 # Set a factor to create desired order
 total_tests_df$strategy <- factor(
-  means_df$strategy,
-  levels = c("nary-split", "max-rpop", "skipping-cum-rpop", "max-cum-rpop")
+  total_tests_df$strategy,
+  levels = c("Nary-split", "Max-rpop", "Skipping-cum-rpop", "Max-cum-rpop")
 )
 
 # Shared y-axis limit
-ymax_common <- ceiling(max(total_tests_df$mean_tests))
+ymax_common <- ceiling(max(total_tests_df$mean_test_col))
 
 # Combined barplot with HCL spectrum colours
-p_combined <- ggplot(total_tests_df, aes(x = factor(number_testers), y = mean_tests,
+p_combined <- ggplot(total_tests_df, aes(x = factor(number_testers), y = mean_test_col,
                                  fill = strategy)) +
   geom_col(position = position_dodge(width=0.8), color = "black",
            width = 0.7) +
@@ -679,8 +760,8 @@ ggsave("Plots/strategy_distributions/barplot_mean_total_tests.pdf",
 # Prepare data
 df_ns <- data.frame(
   number_testers = 1:10,
-  mean_iterations = sapply(nary_split_pmfs[1:10], mean_tests),
-  mean_total_tests = nary_split_total_tests[1:10]
+  mean_iterations = sapply(nary_testcycle_pmfs[1:10], pmf_to_mean),
+  mean_total_tests = nary_mean_tests[1:10]
 )
 
 # Compute deltas between consecutive numbers of testers
@@ -724,8 +805,8 @@ ggsave("Plots/strategy_distributions/nary_split_efficiency_ratio.pdf",
 # Prepare data
 efficiency_df<- data.frame(
   number_testers   = 1:10,
-  mean_iterations  = sapply(nary_split_pmfs[1:10], mean_tests),
-  mean_total_tests = nary_split_total_tests[1:10]
+  mean_iterations  = sapply(nary_testcycle_pmfs[1:10], pmf_to_mean),
+  mean_total_tests = nary_mean_tests[1:10]
 )
 
 # Baseline for 1 tester
@@ -777,10 +858,10 @@ ggsave("Plots/strategy_distributions/nary_split_efficiency_ratio_vs1.pdf",
 # mean test cycles
 test_cycle_df_wide <- data.frame(
   number_testers = 1:10,
-  nary_split       = sapply(nary_split_pmfs[1:10],       mean_tests),
-  max_rpop         = sapply(max_rpop_pmfs[1:10],         mean_tests),
-  skipping_cum_rpop = sapply(skipping_cum_rpop_pmfs[1:10], mean_tests),
-  max_cum_rpop      = sapply(max_cum_rpop_pmfs[1:10],      mean_tests)
+  nary_split       = sapply(nary_testcycle_pmfs[1:10], pmf_to_mean),
+  max_rpop         = sapply(rpop_testcycle_pmfs[1:10], pmf_to_mean),
+  skipping_cum_rpop = sapply(skipping_testcycle_pmfs[1:10], pmf_to_mean),
+  max_cum_rpop      = sapply(cum_testcycle_pmfs[1:10], pmf_to_mean)
 )
 
 test_cycle_diff_df <- data.frame(
@@ -794,10 +875,10 @@ test_cycle_diff_df <- data.frame(
 # mean total tests
 total_tests_wide <- data.frame(
   number_testers   = 1:10,
-  nary_split       = nary_split_total_tests[1:10],
-  max_rpop         = max_rpop_total_tests[1:10],
-  skipping_cum_rpop = skipping_cum_rpop_total_tests[1:10],
-  max_cum_rpop      = max_cum_rpop_total_tests[1:10]
+  nary_split       = nary_mean_tests[1:10],
+  max_rpop         = rpop_mean_tests[1:10],
+  skipping_cum_rpop = skipping_mean_tests[1:10],
+  max_cum_rpop      = cum_mean_tests[1:10]
 )
 total_tests_diff_df <- data.frame(
   number_testers = 2:10,
