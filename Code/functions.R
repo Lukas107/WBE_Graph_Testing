@@ -1,13 +1,4 @@
-library(readxl)
 library(data.tree)
-library(dplyr)
-library(DiagrammeR)
-library(DiagrammeRsvg)
-library(rsvg)
-library(ggplot2)
-library(patchwork)
-library(rlang)
-library(xtable)
 
 # Tree Stuff ####
 
