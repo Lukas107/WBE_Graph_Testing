@@ -103,9 +103,9 @@ if (!identical(sort(unique(col_labels)), sort(unique(row_labels)))) {
 
 
 # Create tree plots ####
-tree = set_up_tree()
-tree_cum_rpop = set_up_tree()
-tree_simplified = set_up_tree()
+tree = set_up_tree(contaminated_node="KAS_2")
+tree_cum_rpop = set_up_tree(contaminated_node="KAS_2")
+tree_simplified = set_up_tree(contaminated_node="KAS_2")
 
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
@@ -327,50 +327,50 @@ ggsave("Plots/scatter_area_pop.pdf",
 
 # This will typically take a long time
 
-# Compute PMFs for each tester count 1:10
-nary_testcycle_pmfs <- lapply(1:10, function(n) {
+# Compute PMFs for each tester count 1:15
+nary_testcycle_pmfs <- lapply(1:15, function(n) {
   strat_testcycle_pmf(nary_split, number_testers = n)
 })
-cum_testcycle_pmfs <- lapply(1:10, function(n) {
-  strat_testcycle_pmf(max_cum_rpop, number_testers = n)
-})
-rpop_testcycle_pmfs <- lapply(1:10, function(n) {
+rpop_testcycle_pmfs <- lapply(1:15, function(n) {
   strat_testcycle_pmf(max_rpop, number_testers = n)
 })
-skipping_testcycle_pmfs <- lapply(1:10, function(n) {
+cum_testcycle_pmfs <- lapply(1:15, function(n) {
+  strat_testcycle_pmf(max_cum_rpop, number_testers = n)
+})
+skipping_testcycle_pmfs <- lapply(1:15, function(n) {
   strat_testcycle_pmf(skipping_cum_rpop, number_testers = n)
 })
 
 # Compute corresponding CDFs
 nary_testcycle_cdfs <- lapply(nary_testcycle_pmfs, cumsum)
-cum_testcycle_cdfs <- lapply(cum_testcycle_pmfs, cumsum)
 rpop_testcycle_cdfs <- lapply(rpop_testcycle_pmfs, cumsum)
+cum_testcycle_cdfs <- lapply(cum_testcycle_pmfs, cumsum)
 skipping_testcycle_cdfs <- lapply(skipping_testcycle_pmfs, cumsum)
 
-nary_mean_testcycles <- sapply(1:10, function(n) {
+nary_mean_testcycles <- sapply(1:15, function(n) {
   pmf_to_mean(nary_testcycle_pmfs[[n]])
 })
-rpop_mean_testcycles <- sapply(1:10, function(n) {
+rpop_mean_testcycles <- sapply(1:15, function(n) {
   pmf_to_mean(rpop_testcycle_pmfs[[n]])
 })
-skipping_mean_testcycles <- sapply(1:10, function(n) {
+skipping_mean_testcycles <- sapply(1:15, function(n) {
   pmf_to_mean(skipping_testcycle_pmfs[[n]])
 })
-cum_mean_testcycles <- sapply(1:10, function(n) {
+cum_mean_testcycles <- sapply(1:15, function(n) {
   pmf_to_mean(cum_testcycle_pmfs[[n]])
 })
 
-# Compute average total tests for each tester count 1:10
-nary_test_pmfs <- lapply(1:10, function(n) {
+# Compute average total tests for each tester count 1:15
+nary_test_pmfs <- lapply(1:15, function(n) {
   strat_total_tests_pmf(nary_split, number_testers = n)
 })
-rpop_test_pmfs <- lapply(1:10, function(n) {
+rpop_test_pmfs <- lapply(1:15, function(n) {
   strat_total_tests_pmf(max_rpop, number_testers = n)
 })
-skipping_test_pmfs <- lapply(1:10, function(n) {
+skipping_test_pmfs <- lapply(1:15, function(n) {
   strat_total_tests_pmf(skipping_cum_rpop, number_testers = n)
 })
-cum_test_pmfs <- lapply(1:10, function(n) {
+cum_test_pmfs <- lapply(1:15, function(n) {
   strat_total_tests_pmf(max_cum_rpop, number_testers = n)
 })
 
@@ -380,16 +380,16 @@ rpop_test_cdfs     <- lapply(rpop_test_pmfs, cumsum)
 skipping_test_cdfs <- lapply(skipping_test_pmfs, cumsum)
 cum_test_cdfs      <- lapply(cum_test_pmfs, cumsum)
 
-nary_mean_tests <- sapply(1:10, function(n) {
+nary_mean_tests <- sapply(1:15, function(n) {
   pmf_to_mean(nary_test_pmfs[[n]])
 })
-rpop_mean_tests <- sapply(1:10, function(n) {
+rpop_mean_tests <- sapply(1:15, function(n) {
   pmf_to_mean(rpop_test_pmfs[[n]])
 })
-skipping_mean_tests <- sapply(1:10, function(n) {
+skipping_mean_tests <- sapply(1:15, function(n) {
   pmf_to_mean(skipping_test_pmfs[[n]])
 })
-cum_mean_tests <- sapply(1:10, function(n) {
+cum_mean_tests <- sapply(1:15, function(n) {
   pmf_to_mean(cum_test_pmfs[[n]])
 })
 
@@ -400,7 +400,7 @@ cum_mean_tests <- sapply(1:10, function(n) {
 
 # Convert vectors to data frames with x = 1:19
 pmf_barplot <- function(pmf, ymax, title) {
-  df <- data.frame(x = seq_along(pmf), value = as.numeric(pmf))
+  df <- data.frame(x = seq_along(pmf[1:10]), value = as.numeric(pmf)[1:10])
   
   ggplot(df, aes(x = factor(x), y = value)) +
     geom_col(fill = "grey", color = "black") +
@@ -665,7 +665,7 @@ ggsave("Plots/strategy_distributions/seven_testers/nary_cum_seven_total.pdf",
 # Compute mean tests for each strategy and number of testers (1–10)
 means_df <- data.frame(
   number_testers = rep(1:10, 4),
-  strategy = rep(c("nary-split", "max-cum-rpop", "max-rpop", "skipping-cum-rpop"),
+  strategy = rep(c("nary-split", "max-rpop", "skipping-cum-rpop", "max-cum-rpop"),
                  each = 10),
   mean_test_col = c(nary_mean_testcycles[1:10], rpop_mean_testcycles[1:10],
                     skipping_mean_testcycles[1:10], cum_mean_testcycles[1:10])
@@ -837,15 +837,12 @@ efficiency_df$efficiency_ratio_vs1 <- -efficiency_df$delta_iterations_vs1 / effi
 df_eff_vs1 <- subset(efficiency_df
                     , number_testers != 1 & is.finite(efficiency_ratio_vs1))
 
-# Use absolute values so bars go upward even if ratio is negative
-df_eff_vs1$efficiency_ratio_vs1_abs <- abs(df_eff_vs1$efficiency_ratio_vs1)
-
 # Shared y-axis limit (either recompute, or reuse your old ymax_common)
-ymax_common_vs1 <- ceiling(max(df_eff_vs1$efficiency_ratio_vs1_abs, na.rm = TRUE))
+ymax_common_vs1 <- ceiling(max(df_eff_vs1$efficiency_ratio_vs1, na.rm = TRUE))
 
 # Barplot
 p_eff_vs1 <- ggplot(df_eff_vs1,
-                    aes(x = factor(number_testers), y = efficiency_ratio_vs1_abs)) +
+                    aes(x = factor(number_testers), y = efficiency_ratio_vs1)) +
   geom_col(color = "black", width = 0.7) +
   labs(
     title = "Reduktion Testdurchläufe pro zusätzlichem Test beim Nary-split_1",
@@ -865,122 +862,23 @@ p_eff_vs1 <- ggplot(df_eff_vs1,
 ggsave("Plots/strategy_distributions/nary_split_efficiency_ratio_vs1.pdf",
        plot = p_eff_vs1, width = 9, height = 4.5, dpi = 150)
 
-# Efficiency ratio vs. Nary-split with 1 tester (for Nary-split AND Max-rpop) ####
-# Efficiency ratio vs. Nary-split with 1 tester (Nary-split & Max-rpop) ####
-
-# Predefined palette
-colour_palette <- hcl.colors(4, palette = "Set 2")
-
-# Baseline (Nary-split with 1 tester)
-baseline_iter  <- nary_mean_testcycles[1]
-baseline_tests <- nary_mean_tests[1]
-
-# Strategy summaries
-df_nary <- data.frame(
-  strategy        = "Nary-split",
-  number_testers  = 1:10,
-  mean_iterations = nary_mean_testcycles,
-  mean_total_tests= nary_mean_tests
-)
-
-df_rpop <- data.frame(
-  strategy        = "Max-rpop",
-  number_testers  = 1:10,
-  mean_iterations = rpop_mean_testcycles,
-  mean_total_tests= rpop_mean_tests
-)
-
-df_eff_both <- rbind(df_nary, df_rpop)
-
-# Deltas vs baseline
-df_eff_both$delta_iterations_vs_baseline  <-
-  df_eff_both$mean_iterations - baseline_iter
-
-df_eff_both$delta_total_tests_vs_baseline <-
-  df_eff_both$mean_total_tests - baseline_tests
-
-# Efficiency ratio
-df_eff_both$efficiency_ratio_vs_baseline <-
-  -df_eff_both$delta_iterations_vs_baseline /
-  df_eff_both$delta_total_tests_vs_baseline
-
-# Remove 1 tester and non-finite values
-df_eff_both <- subset(
-  df_eff_both,
-  number_testers != 1 & is.finite(efficiency_ratio_vs_baseline)
-)
-
-# Absolute value for upward bars
-df_eff_both$eff_ratio_abs <- abs(df_eff_both$efficiency_ratio_vs_baseline)
-
-# Enforce strategy order (plot + legend)
-df_eff_both$strategy <- factor(
-  df_eff_both$strategy,
-  levels = c("Nary-split", "Max-rpop")
-)
-
-# Shared y-limit
-ymax_common <- ceiling(max(df_eff_both$eff_ratio_abs, na.rm = TRUE))
-
-# Plot
-p_eff_vs_nary1_both <- ggplot(
-  df_eff_both,
-  aes(x = factor(number_testers), y = eff_ratio_abs, fill = strategy)) +
-  geom_col(color = "black", width = 0.7,
-           position = position_dodge(width = 0.8)) +
-  scale_fill_manual(values = c("Nary-split" = colour_palette[1],
-                               "Max-rpop"   = colour_palette[2])) +
-  labs(title = "Reduktion Testdurchläufe pro zusätzlichem Test",
-       x = "Anzahl Probennehmer",
-       y = expression("Effizienz verglichen mit " ~ Nary - split[1]),
-       fill = "Strategie") +
-  ylim(0, ymax_common) +
-  theme_minimal(base_size = 13) +
-  theme(plot.title   = element_text(face = "bold", hjust = 0.5),
-        axis.text.x  = element_text(angle = 45, hjust = 1),
-        panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8)
-  )
-
-ggsave(
-  "Plots/strategy_distributions/efficiency_ratio_vs_nary_split_1_both.pdf",
-  plot = p_eff_vs_nary1_both,
-  width = 9,
-  height = 4.5,
-  dpi = 150
-)
-
 # Create test cycle and total test data ####
 
 # mean test cycles
 testcycle_df_wide <- data.frame(
-  number_testers = 1:10,
-  nary_split       = nary_mean_testcycles,
-  max_rpop         = rpop_mean_testcycles,
-  skipping_cum_rpop = skipping_mean_testcycles,
-  max_cum_rpop      = cum_mean_testcycles
+  number_testers = 1:15,
+  nary_split       = nary_mean_testcycles[1:15],
+  max_rpop         = rpop_mean_testcycles[1:15],
+  skipping_cum_rpop = skipping_mean_testcycles[1:15],
+  max_cum_rpop      = cum_mean_testcycles[1:15]
 )
 # mean total tests
 test_df_wide <- data.frame(
-  number_testers   = 1:10,
-  nary_split       = nary_mean_tests[1:10],
-  max_rpop         = rpop_mean_tests[1:10],
-  skipping_cum_rpop = skipping_mean_tests[1:10],
-  max_cum_rpop      = cum_mean_tests[1:10]
+  number_testers   = 1:15,
+  nary_split       = nary_mean_tests[1:15],
+  max_rpop         = rpop_mean_tests[1:15],
+  skipping_cum_rpop = skipping_mean_tests[1:15],
+  max_cum_rpop      = cum_mean_tests[1:15]
 )
 
-# Diffs
-test_cycle_diff_df <- data.frame(
-  number_testers = 2:10,
-  nary_split       = diff(test_cycle_df_wide$nary_split),
-  max_cum_rpop      = diff(test_cycle_df_wide$max_cum_rpop),
-  max_rpop         = diff(test_cycle_df_wide$max_rpop),
-  skipping_cum_rpop = diff(test_cycle_df_wide$skipping_cum_rpop)
-)
 
-total_tests_diff_df <- data.frame(
-  number_testers = 2:10,
-  nary_split       = diff(total_tests_wide$nary_split),
-  max_cum_rpop      = diff(total_tests_wide$max_cum_rpop),
-  max_rpop         = diff(total_tests_wide$max_rpop),
-  skipping_cum_rpop = diff(total_tests_wide$skipping_cum_rpop)
-)

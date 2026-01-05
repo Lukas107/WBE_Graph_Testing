@@ -33,7 +33,7 @@ compute_cum_rpop <- function(root) {
 
 
 # set_up_tree function
-set_up_tree <- function(contaminated_node="KLA_1") {
+set_up_tree <- function(contaminated_node) {
   # Root should be first name in both label vectors
   root_name <- col_labels[1]
   
@@ -284,7 +284,18 @@ needed_testing_iterations <- function(root, strategy, number_testers=1,
     test_count <- test_count + 1
     
     # Nodes that are actually contaminated
-    contaminated_nodes <- Filter(function(n) isTRUE(n$contamination), tested_nodes)
+    contaminated_nodes <- Filter(function(n) isTRUE(n$contamination),
+                                 tested_nodes)
+    uncontaminated_nodes <- Filter(function(n) isFALSE(n$contamination),
+                                   tested_nodes)
+    
+    # Remove all negatively tested subtrees from the current tree
+    lapply(uncontaminated_nodes, function(n) {
+      parent <- n$parent
+      if (!is.null(parent)) {
+        parent$RemoveChild(n$name)
+      }
+    })
     
     if (length(contaminated_nodes) > 0) {
       if (verbose) print("Hit")
@@ -303,15 +314,6 @@ needed_testing_iterations <- function(root, strategy, number_testers=1,
     }
     else {
       if (verbose) print("Miss")
-      
-      # Remove all tested subtrees from the current tree
-      lapply(tested_nodes, function(n) {
-        parent <- n$parent
-        if (!is.null(parent)) {
-          parent$RemoveChild(n$name)
-        }
-      })
-      
       # Renormalise cum_rpop on the remaining tree
       compute_cum_rpop(current_node)
     }
@@ -346,7 +348,7 @@ strat_testcycle_pmf = function(strategy,  number_testers=1, verbose=TRUE) {
 }
 
 
-# Needed total tests, for a tree with a specified contamination
+# Needed total tests, for a tree with an already a specified contamination node
 needed_total_tests <- function(root, strategy, number_testers=1,
                                verbose = FALSE) {
   total_tests  <- 0L
@@ -367,6 +369,14 @@ needed_total_tests <- function(root, strategy, number_testers=1,
     # Check which tested nodes are contaminated
     contaminated_nodes <- Filter(function(n) isTRUE(n$contamination),
                                  tested_nodes)
+    uncontaminated_nodes <- Filter(function(n) isFALSE(n$contamination),
+                                 tested_nodes)
+    
+    # Remove all uncontaminated nodes
+    lapply(uncontaminated_nodes, function(n) {
+      parent <- n$parent
+      if (!is.null(parent)) parent$RemoveChild(n$name)
+    })
     
     if (length(contaminated_nodes) > 0L) {
       if (verbose) cat("Hit\n")
@@ -382,12 +392,6 @@ needed_total_tests <- function(root, strategy, number_testers=1,
       
     } else {
       if (verbose) cat("Miss\n")
-      
-      # Remove all tested nodes
-      lapply(tested_nodes, function(n) {
-        parent <- n$parent
-        if (!is.null(parent)) parent$RemoveChild(n$name)
-      })
       compute_cum_rpop(current_node)
     }
   }
@@ -400,13 +404,12 @@ needed_total_tests <- function(root, strategy, number_testers=1,
 # Calculate average tests needed by a particular strategy
 strat_total_tests_pmf <- function(strategy, number_testers=1, verbose=TRUE) {
   probs = rep(0, 50)
-  weight_total <- 0
   
   # Add up needed tests over all nodes
   for (node_name in col_labels) {
     root <- set_up_tree(contaminated_node = node_name)
     node <- FindNode(root, node_name)
-    node_rpop <- if (!is.null(node)) node$rpop else 0
+    node_rpop <- node$rpop
     
     # Only consider valid contamination nodes
     if (is.na(node_rpop) || node_rpop == 0) next
