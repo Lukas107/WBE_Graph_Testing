@@ -202,8 +202,9 @@ nary_split <- function(root, number_testers) {
   # Initialize working fields
   root$Set(nary_cum_rpop = root$Get("cum_rpop"), excluded = FALSE)
   
-  # Calculate number of tests that can be performed this step
-  num_nodes_to_select <- min(number_testers, length(nodes))
+  # Calculate number of tests that can be performed this step 
+  # -1 becouse root is not a candidate
+  num_nodes_to_select <- min(number_testers, length(nodes) - 1)
   
   # These will later be used to store results
   selected_names <- character(num_nodes_to_select)
@@ -212,7 +213,7 @@ nary_split <- function(root, number_testers) {
   # Used to determine target dynamically in each iteration
   remaining_cum_rpop = 1
   
-  for (i in 1:number_testers) {
+  for (i in 1:num_nodes_to_select) {
     # Get all nodes that are fit for nary splitting
     candidates <- Filter(function(n) {
       !identical(n, root) && !n$excluded &&!(n$name %in% selected_names)
@@ -222,7 +223,7 @@ nary_split <- function(root, number_testers) {
     if (length(candidates) >= 1) {
       
       # Try to split remaining probability mass as evenly as possible
-      remaining_tests = number_testers - i + 1
+      remaining_tests = num_nodes_to_select - i + 1
       target <- remaining_cum_rpop / (remaining_tests+1)
       
       # Choose non-excluded node closest to target

@@ -845,10 +845,9 @@ p_eff_vs1 <- ggplot(df_eff_vs1,
                     aes(x = factor(number_testers), y = efficiency_ratio_vs1)) +
   geom_col(color = "black", width = 0.7) +
   labs(
-    title = "Reduktion Testdurchläufe pro zusätzlichem Test beim Nary-split_1",
+    title = "Reduktion Testdurchläufe pro zusätzlichem Test beim Nary-split",
     x = "Anzahl Probennehmer",
-    y = expression("Effizienz verglichen mit " ~
-        Nary - split[1])
+    y = expression("Effizienz verglichen mit einem Probennehmer")
   ) +
   ylim(0, ymax_common_vs1) +
   theme_minimal(base_size = 13) +
